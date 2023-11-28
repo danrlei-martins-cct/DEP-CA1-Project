@@ -5,12 +5,16 @@ setwd("C:/Users/danrl/OneDrive/Documents/R Programming/DEP-CA1-Project/")
 covid_dataset = read.csv("covid-vaccination-vs-death_ratio.csv")
 
 # Install and load necessary libraries
-install.packages(c("ggplot2", "tidyr", "dplyr", "viridis", "scales"))
+install.packages(c("ggplot2", "tidyr", "dplyr", "viridis", "scales", "corrplot", "reshape2", "maps", "mapdata"))
 library(ggplot2)
 library(tidyr)
 library(dplyr)
 library(viridis)
 library(scales)
+library(corrplot)
+library(reshape2)
+library(maps)
+library(mapdata)
 
 # 1. Data Overview
 
@@ -45,6 +49,16 @@ covid_dataset <- covid_dataset %>%
 
 # Convert the date column to Date type
 covid_dataset$date <- as.Date(covid_dataset$date)
+
+# Dealing with negative values (new_deaths)
+
+# Check minimum value of new_deaths
+summary(covid_dataset$new_deaths)
+
+negative_deaths <- covid_dataset[covid_dataset$new_deaths < 0, ]
+
+# Assuming the negative values are typos, fixing the values
+covid_dataset$new_deaths <- ifelse(covid_dataset$new_deaths < 0, -covid_dataset$new_deaths, covid_dataset$new_deaths)
 
 # 3. Variable Identification and Visualization
 
@@ -131,16 +145,6 @@ ggplot(covid_dataset, aes(x = date, y = new_deaths)) +
        y = "Number of New Deaths") +
   theme_minimal()
 
-# Dealing with negative values
-
-# Check minimum value of new_deaths
-summary(covid_dataset$new_deaths)
-
-negative_deaths <- covid_dataset[covid_dataset$new_deaths < 0, ]
-
-# Assuming the negative values are typos, fixing the values
-covid_dataset$new_deaths <- ifelse(covid_dataset$new_deaths < 0, -covid_dataset$new_deaths, covid_dataset$new_deaths)
-
 # 3.5 Continuous variable - ratio
 # to be finished
 
@@ -213,8 +217,39 @@ covid_robust_scaled <- numerical_vars %>%
 
 # 7. Correlation Analysis
 
+# Calculate the correlation matrix
+correlation_matrix <- cor(numerical_vars)
+
+# Reshape the correlation matrix for plotting
+correlation_data <- as.data.frame(as.table(correlation_matrix))
+colnames(correlation_data) <- c("Var1", "Var2", "Correlation")
+
 # Line
+ggplot(correlation_data, aes(x = Var1, y = Correlation, group = Var2, color = Var2)) +
+  geom_line() +
+  geom_point() +
+  theme_minimal() +
+  labs(title = "Correlation Between Variables",
+       x = "Variables",
+       y = "Correlation")
 
 # Scatter
+ggplot(covid_dataset, aes(x = total_vaccinations, y = new_deaths)) +
+  geom_point(color = "steelblue") + 
+  geom_smooth(method = "lm", se = FALSE, color = "black") +
+  scale_x_continuous(labels = scales::comma) +
+  scale_y_continuous(labels = scales::comma) +
+  labs(title = "Scatter Plot of New Deaths vs Total Vaccinations",
+       x = "Total Vaccinations",
+       y = "New Deaths") +
+  theme_minimal() 
 
 # Heatmap
+ggplot(melt(correlation_matrix), aes(x = Var1, y = Var2, fill = value)) +
+  geom_tile(color = "white") +
+  scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0, limits = c(-1,1), space = "Lab", name="Correlation") +
+  theme_minimal() +
+  labs(title = "Correlation Between Variables",
+       x = "Variables",
+       y = "Variables")
+
