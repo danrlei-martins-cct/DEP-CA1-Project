@@ -189,3 +189,32 @@ max_ratio <- max(covid_dataset$ratio)
 sd_ratio <- sd(covid_dataset$ratio)
 
 # 6. Normalization and Standardization
+
+# Extract numerical variables
+numerical_vars <- covid_dataset %>%
+  select(total_vaccinations, people_vaccinated, people_fully_vaccinated, new_deaths, population, ratio)
+
+## Min-Max Normalization
+covid_min_max_normalized <- as.data.frame(apply(numerical_vars, 2, function(x) (x - min(x)) / (max(x) - min(x))))
+
+## Z-score Standardization
+covid_z_score_standardized <- as.data.frame(scale(numerical_vars))
+
+## Robust Scalar
+
+# Define the robust_scalar function
+robust_scalar <- function(x) {
+  (x - median(x)) / (quantile(x, probs = .75) - quantile(x, probs = .25))
+}
+
+# Apply the robust_scalar function to each column
+covid_robust_scaled <- numerical_vars %>%
+  mutate_all(~robust_scalar(.))
+
+# 7. Correlation Analysis
+
+# Line
+
+# Scatter
+
+# Heatmap
