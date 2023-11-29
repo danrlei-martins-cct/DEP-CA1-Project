@@ -253,3 +253,51 @@ ggplot(melt(correlation_matrix), aes(x = Var1, y = Var2, fill = value)) +
        x = "Variables",
        y = "Variables")
 
+# 8. Data Exploratory Analysis (EDA)
+
+# Creating Map Plot to visualize the total number of deaths per country
+
+# Group by country and summarize to calculate total deaths
+country_total_deaths <- covid_dataset %>%
+  group_by(country) %>%
+  summarize(total_deaths = sum(new_deaths, na.rm = TRUE)) %>%
+  as.data.frame()
+
+# Standardize country names
+country_total_deaths <- country_total_deaths %>%
+  mutate(
+    country = case_when(
+      country == "United States of America" ~ "USA",
+      country == "Russian Federation" ~ "Russia",
+      country == "Bolivia (Plurinational State of)" ~ "Bolivia",
+      country == "Venezuela (Bolivarian Republic of)" ~ "Venezuela",
+      country == "Antigua and Barbuda" ~ "Antigua",
+      country == "Brunei Darussalam" ~ "Brunei",
+      country == "Cabo Verde" ~ "Cape Verde",
+      country == "Curaçao" ~ "Curacao",
+      country == "Falkland Islands (Malvinas)" ~ "Falkland Islands",
+      country == "Iran (Islamic Republic of)" ~ "Iran",
+      country == "Lao People's Democratic Republic" ~ "Laos",
+      country == "Republic of Korea" ~ "South Korea",
+      country == "Republic of Moldova" ~ "Moldova",
+      country == "Saint Kitts and Nevis" ~ "Saint Kitts",
+      country == "Syrian Arab Republic" ~ "Syria",
+      country == "The United Kingdom" ~ "UK",
+      country == "Trinidad and Tobago" ~ "Trinidad",
+      country == "United Republic of Tanzania" ~ "Tanzania",
+      country == "Viet Nam" ~ "Vietnam",
+      country == "occupied Palestinian territory, including east Jerusalem" ~ "Palestine",
+      TRUE ~ country
+    ))
+
+world_map <- map_data("world")
+
+# Merge world map with country_total_deaths dataset
+covid_world <- merge(world_map, country_total_deaths, by.x = "region", by.y = "country", all.x = TRUE)
+
+ggplot() +
+  geom_polygon(data = covid_world, aes(x = long, y = lat, group = group, fill = total_deaths)) +
+  scale_fill_viridis(name = "Total Deaths") +
+  theme_minimal() +
+  theme(axis.title.x = element_blank(), axis.title.y = element_blank()) +
+  labs(title = "COVID-19 Dataset: Total Deaths by Country")
