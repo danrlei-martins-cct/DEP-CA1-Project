@@ -5,7 +5,7 @@ setwd("C:/Users/danrl/OneDrive/Documents/R Programming/DEP-CA1-Project/")
 covid_dataset = read.csv("covid-vaccination-vs-death_ratio.csv")
 
 # Install and load necessary libraries
-install.packages(c("ggplot2", "tidyr", "dplyr", "viridis", "scales", "corrplot", "reshape2", "maps", "mapdata"))
+install.packages(c("ggplot2", "tidyr", "dplyr", "viridis", "scales", "corrplot", "reshape2", "maps", "mapdata", "fastDummies"))
 library(ggplot2)
 library(tidyr)
 library(dplyr)
@@ -15,6 +15,7 @@ library(corrplot)
 library(reshape2)
 library(maps)
 library(mapdata)
+library(fastDummies)
 
 # 1. Data Overview
 
@@ -36,16 +37,17 @@ print(summary(covid_dataset))
 
 str(covid_dataset)
 
-# Renaming column
+# Renaming column for consistency
 colnames(covid_dataset)[8] <- "new_deaths"
 
-# Drop unnecessary column
+# Drop unnecessary columns
 covid_dataset <- subset(covid_dataset, select = -X)
+covid_dataset <- subset(covid_dataset, select = -ratio)
 
 # Creating percentage of vaccinated and fully vaccinated columns
 covid_dataset <- covid_dataset %>%
-  mutate(percentage_vaccinated = people_vaccinated / population * 100,
-         percentage_fully_vaccinated = people_fully_vaccinated / population * 100)
+  mutate(pc_vaccinated = people_vaccinated / population * 100,
+         pc_fully_vacc = people_fully_vaccinated / population * 100)
 
 # Convert the date column to Date type
 covid_dataset$date <- as.Date(covid_dataset$date)
@@ -62,13 +64,13 @@ covid_dataset$new_deaths <- ifelse(covid_dataset$new_deaths < 0, -covid_dataset$
 
 # 3. Variable Identification and Visualization
 
-# Display structure of dataset, showing the data types
+# Display structure of data set, showing the data types
 cat("\nStructure of the dataset:\n")
 str(covid_dataset)
 
 # 3.1 Categorical variable - country
 
-# Select the top 10 countries by total vaccinations (dataset contains 197)
+# Select the top 10 countries by total vaccinations
 top_10_countries <- covid_dataset %>%
   group_by(country) %>%
   summarise(total_vaccinations = sum(total_vaccinations, na.rm = TRUE)) %>%
@@ -89,10 +91,11 @@ ggplot(top_10_countries,
   labs(title = "Bar Chart for Top 10 Total Vaccinations by Country",
        x = "Total Vaccinations (in millions)", y = "Country") +
   theme_minimal() +
-  theme(axis.text.y = element_text(size = 10),
-        axis.text.x = element_text(size = 6)) +
+  theme(axis.text.y = element_text(size = 9),
+        axis.text.x = element_text(size = 7)) +
   scale_fill_manual(values = c("steelblue")) +
-  geom_text(aes(label = scales::comma(total_vaccinations)), 
+  scale_x_continuous(labels = scales::label_number(accuracy = 1, scale = 1e6, suffix = " M")) +
+  geom_text(aes(label = format(round(total_vaccinations), big.mark = ",")), 
             hjust = 0.2, 
             size = 3.1, 
             color = "white",
@@ -112,7 +115,8 @@ ggplot(subset(covid_dataset, country %in% c("Germany", "The United Kingdom")),
        aes(x = date, y = total_vaccinations, color = country)) +
   geom_line() +
   labs(title = "Germany vs UK - Total Vaccinations Over Time", x = "Date", y = "Total Vaccinations") +
-  theme(legend.position = "right")
+  theme(legend.position = "right") +
+  scale_y_continuous(labels = scales::label_number(scale = 1e-6, suffix = "M"))
 
 # 3.3 Continuous Variables - people_vaccinated & people_fully_vaccinated
 ggplot(subset(covid_dataset, country %in% c("The United Kingdom")), aes(x = date)) +
@@ -186,23 +190,66 @@ min_population <- min(covid_dataset$population)
 max_population <- max(covid_dataset$population)
 sd_population <- sd(covid_dataset$population)
 
-mean_ratio <- mean(covid_dataset$ratio)
-median_ratio <- median(covid_dataset$ratio)
-min_ratio <- min(covid_dataset$ratio)
-max_ratio <- max(covid_dataset$ratio)
-sd_ratio <- sd(covid_dataset$ratio)
+mean_pc_vaccinated <- mean(covid_dataset$pc_vaccinated)
+median_pc_vaccinated <- median(covid_dataset$pc_vaccinated)
+min_pc_vaccinated <- min(covid_dataset$pc_vaccinated)
+max_pc_vaccinated <- max(covid_dataset$pc_vaccinated)
+sd_pc_vaccinated <- sd(covid_dataset$pc_vaccinated)
+
+mean_pc_fully_vacc <- mean(covid_dataset$pc_fully_vacc)
+median_pc_fully_vacc <- median(covid_dataset$pc_fully_vacc)
+min_pc_fully_vacc <- min(covid_dataset$pc_fully_vacc)
+max_pc_fully_vacc <- max(covid_dataset$pc_fully_vacc)
+sd_pc_fully_vacc <- sd(covid_dataset$pc_fully_vacc)
+
+# Create a vector for each parameter and statistic
+parameters <- rep(c("Total Vaccinations", "People Vaccinated", "People Fully Vaccinated", "New Deaths", "Population", "Partially Vaccinated %", "Fully Vaccinated %"), each = 5)
+statistics <- rep(c("Mean", "Median", "Min", "Max", "SD"), times = 7)
+
+# Create a vector for each calculated value
+values <- c(
+  mean(covid_dataset$total_vaccinations), median(covid_dataset$total_vaccinations), min(covid_dataset$total_vaccinations), max(covid_dataset$total_vaccinations), sd(covid_dataset$total_vaccinations),
+  mean(covid_dataset$people_vaccinated), median(covid_dataset$people_vaccinated), min(covid_dataset$people_vaccinated), max(covid_dataset$people_vaccinated), sd(covid_dataset$people_vaccinated),
+  mean(covid_dataset$people_fully_vaccinated), median(covid_dataset$people_fully_vaccinated), min(covid_dataset$people_fully_vaccinated), max(covid_dataset$people_fully_vaccinated), sd(covid_dataset$people_fully_vaccinated),
+  mean(covid_dataset$new_deaths), median(covid_dataset$new_deaths), min(covid_dataset$new_deaths), max(covid_dataset$new_deaths), sd(covid_dataset$new_deaths),
+  mean(covid_dataset$population), median(covid_dataset$population), min(covid_dataset$population), max(covid_dataset$population), sd(covid_dataset$population),
+  mean(covid_dataset$pc_vaccinated), median(covid_dataset$pc_vaccinated), min(covid_dataset$pc_vaccinated), max(covid_dataset$pc_vaccinated), sd(covid_dataset$pc_vaccinated),
+  mean(covid_dataset$pc_fully_vacc), median(covid_dataset$pc_fully_vacc), min(covid_dataset$pc_fully_vacc), max(covid_dataset$pc_fully_vacc), sd(covid_dataset$pc_fully_vacc)
+)
+
+# Create the summary_stats data frame
+summary_stats <- data.frame(Parameter = parameters, Statistic = statistics, Value = values)
+
+# Turn off scientific notation for results
+for (i in 1:nrow(summary_stats)) {
+  summary_stats$Value[i] <- format(summary_stats$Value[i], scientific = FALSE)
+}
+
+print(summary_stats)
 
 # 6. Normalization and Standardization
 
 # Extract numerical variables
 numerical_vars <- covid_dataset %>%
-  select(total_vaccinations, people_vaccinated, people_fully_vaccinated, new_deaths, population, ratio)
+  select(total_vaccinations, people_vaccinated, people_fully_vaccinated, new_deaths, population, pc_vaccinated, pc_fully_vacc)
 
 ## Min-Max Normalization
 covid_min_max_normalized <- as.data.frame(apply(numerical_vars, 2, function(x) (x - min(x)) / (max(x) - min(x))))
 
+# Visualize Min-Max Normalized Data
+ggplot(melt(covid_min_max_normalized), aes(x = variable, y = value, color = variable)) +
+  geom_boxplot(width = 0.5) +
+  labs(title = "Min-Max Normalized Data") + 
+  theme(legend.position = "none")
+
 ## Z-score Standardization
 covid_z_score_standardized <- as.data.frame(scale(numerical_vars))
+
+# Visualize Z-score Standardized Data
+ggplot(melt(covid_z_score_standardized), aes(x = variable, y = value)) +
+  geom_boxplot(width = 0.5) +
+  labs(title = "Z-score Standardized Data") + 
+  theme(legend.position = "none")
 
 ## Robust Scalar
 
@@ -257,14 +304,17 @@ ggplot(melt(correlation_matrix), aes(x = Var1, y = Var2, fill = value)) +
 
 # Creating Map Plot to visualize the total number of deaths per country
 
-# Group by country and summarize to calculate total deaths
-country_total_deaths <- covid_dataset %>%
+# Group by country and summarize total deaths and vaccinations
+covid_dataset_eda <- covid_dataset %>%
   group_by(country) %>%
-  summarize(total_deaths = sum(new_deaths, na.rm = TRUE)) %>%
+  summarize(
+    total_deaths = sum(new_deaths, na.rm = TRUE),
+    total_vaccinations = max(total_vaccinations, na.rm = TRUE)
+  ) %>%
   as.data.frame()
 
 # Standardize country names
-country_total_deaths <- country_total_deaths %>%
+covid_dataset_eda <- covid_dataset_eda %>%
   mutate(
     country = case_when(
       country == "United States of America" ~ "USA",
@@ -293,11 +343,33 @@ country_total_deaths <- country_total_deaths %>%
 world_map <- map_data("world")
 
 # Merge world map with country_total_deaths dataset
-covid_world <- merge(world_map, country_total_deaths, by.x = "region", by.y = "country", all.x = TRUE)
+covid_world <- merge(world_map, covid_dataset_eda, by.x = "region", by.y = "country", all.x = TRUE)
+
+# Set breaks as ranges for labels
+breaks <- c(600000, 500000, 400000, 200000, 100000, 0)
 
 ggplot() +
   geom_polygon(data = covid_world, aes(x = long, y = lat, group = group, fill = total_deaths)) +
-  scale_fill_viridis(name = "Total Deaths") +
+  scale_fill_viridis(name = "Total Deaths", breaks = breaks, labels = scales::comma(breaks)) +
   theme_minimal() +
   theme(axis.title.x = element_blank(), axis.title.y = element_blank()) +
-  labs(title = "COVID-19 Dataset: Total Deaths by Country")
+  labs(title = "COVID-19 Dataset: Total Deaths by Country") +
+  coord_fixed(ylim = c(-57, 100))
+
+# 9. Dummy Encoding
+
+# Group-by 'country' variable
+covid_dataset_by_country <- covid_dataset %>%
+  group_by(country) %>%
+  summarise(
+    total_vaccinations = sum(total_vaccinations),
+    people_vaccinated = sum(people_vaccinated),
+    people_fully_vaccinated = sum(people_fully_vaccinated),
+    new_deaths = sum(new_deaths)
+  )
+
+# Apply dummy encoding to the country variable
+covid_dataset_by_country <- dummy_cols(covid_dataset_by_country, select_columns = "country", remove_selected_columns = TRUE)
+
+# 10. PCA
+
