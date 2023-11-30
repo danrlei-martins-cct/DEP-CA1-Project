@@ -5,7 +5,7 @@ setwd("C:/Users/danrl/OneDrive/Documents/R Programming/DEP-CA1-Project/")
 covid_dataset = read.csv("covid-vaccination-vs-death_ratio.csv")
 
 # Install and load necessary libraries
-install.packages(c("ggplot2", "tidyr", "dplyr", "viridis", "scales", "corrplot", "reshape2", "maps", "mapdata", "fastDummies"))
+install.packages(c("ggplot2", "tidyr", "dplyr", "viridis", "scales", "corrplot", "reshape2", "maps", "mapdata", "fastDummies", "stats", "FactoMineR"))
 library(ggplot2)
 library(tidyr)
 library(dplyr)
@@ -16,6 +16,8 @@ library(reshape2)
 library(maps)
 library(mapdata)
 library(fastDummies)
+library(stats)
+library(FactoMineR)
 
 # 1. Data Overview
 
@@ -280,18 +282,7 @@ ggplot(correlation_data, aes(x = Var1, y = Correlation, group = Var2, color = Va
        x = "Variables",
        y = "Correlation")
 
-# Scatter
-ggplot(covid_dataset, aes(x = total_vaccinations, y = new_deaths)) +
-  geom_point(color = "steelblue") + 
-  geom_smooth(method = "lm", se = FALSE, color = "black") +
-  scale_x_continuous(labels = scales::comma) +
-  scale_y_continuous(labels = scales::comma) +
-  labs(title = "Scatter Plot of New Deaths vs Total Vaccinations",
-       x = "Total Vaccinations",
-       y = "New Deaths") +
-  theme_minimal() 
-
-# Heatmap
+# Heat map
 ggplot(melt(correlation_matrix), aes(x = Var1, y = Var2, fill = value)) +
   geom_tile(color = "white") +
   scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0, limits = c(-1,1), space = "Lab", name="Correlation") +
@@ -301,6 +292,17 @@ ggplot(melt(correlation_matrix), aes(x = Var1, y = Var2, fill = value)) +
        y = "Variables")
 
 # 8. Data Exploratory Analysis (EDA)
+
+# Scatter Plot - Total Vaccinations vs New Deaths
+ggplot(covid_dataset, aes(x = total_vaccinations, y = new_deaths)) +
+  geom_point(color = "steelblue") + 
+  geom_smooth(method = "lm", se = FALSE, color = "black") +
+  scale_x_continuous(labels = scales::comma) +
+  scale_y_continuous(labels = scales::comma) +
+  labs(title = "Scatter Plot of New Deaths vs Total Vaccinations",
+       x = "Total Vaccinations",
+       y = "New Deaths") +
+  theme_minimal() 
 
 # Creating Map Plot to visualize the total number of deaths per country
 
@@ -342,12 +344,13 @@ covid_dataset_eda <- covid_dataset_eda %>%
 
 world_map <- map_data("world")
 
-# Merge world map with country_total_deaths dataset
+# Merge world map with covid_dataset_eda
 covid_world <- merge(world_map, covid_dataset_eda, by.x = "region", by.y = "country", all.x = TRUE)
 
 # Set breaks as ranges for labels
 breaks <- c(600000, 500000, 400000, 200000, 100000, 0)
 
+# Plot map
 ggplot() +
   geom_polygon(data = covid_world, aes(x = long, y = lat, group = group, fill = total_deaths)) +
   scale_fill_viridis(name = "Total Deaths", breaks = breaks, labels = scales::comma(breaks)) +
@@ -369,7 +372,18 @@ covid_dataset_by_country <- covid_dataset %>%
   )
 
 # Apply dummy encoding to the country variable
-covid_dataset_by_country <- dummy_cols(covid_dataset_by_country, select_columns = "country", remove_selected_columns = TRUE)
+covid_dummy_encoding <- dummy_cols(covid_dataset_by_country, select_columns = "country", remove_selected_columns = TRUE)
 
-# 10. PCA
+# 10. Principal Component Analysis (PCA)
 
+# Apply PCA
+covid_pca <- PCA(numerical_vars, scale.unit = TRUE, graph = FALSE)
+
+# Profile of the first few components
+summary(covid_pca)
+
+# Plotting the first few components
+plot(covid_pca, choix = "var", title = "PCA - Variables")
+
+# Profile of the first principal component
+summary(covid_pca$var$cor)
