@@ -6,6 +6,7 @@ covid_dataset = read.csv("covid-vaccination-vs-death_ratio.csv")
 
 # Install and load necessary libraries
 install.packages(c("ggplot2", "tidyr", "dplyr", "viridis", "scales", "corrplot", "reshape2", "maps", "mapdata", "fastDummies", "stats", "FactoMineR"))
+
 library(ggplot2)
 library(tidyr)
 library(dplyr)
@@ -150,9 +151,6 @@ ggplot(covid_dataset, aes(x = date, y = new_deaths)) +
        x = "Date",
        y = "Number of New Deaths") +
   theme_minimal()
-
-# 3.5 Continuous variable - ratio
-# to be finished
 
 # 4. Missing Values Exploration
 
@@ -383,7 +381,7 @@ covid_pca <- PCA(numerical_vars, scale.unit = TRUE, graph = FALSE)
 summary(covid_pca)
 
 # Plotting the first few components
-plot(covid_pca, choix = "var", title = "PCA - Variables")
+plot(covid_pca, choix = "var", title = "PCA - Variables", col.var = "blue", pch.var = 16)
 
 # Profile of the first principal component
 summary(covid_pca$var$cor)
